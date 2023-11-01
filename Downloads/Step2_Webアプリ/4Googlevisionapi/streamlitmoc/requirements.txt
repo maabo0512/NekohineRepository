@@ -1,0 +1,4 @@
+streamlit==1.27.2
+google-cloud-vision==3.4.5
+
+

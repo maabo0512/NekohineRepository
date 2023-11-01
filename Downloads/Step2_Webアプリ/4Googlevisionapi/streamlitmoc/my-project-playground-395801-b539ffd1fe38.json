@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "my-project-playground-395801",
+  "private_key_id": "b539ffd1fe38304622272819f93fc5549b42ba2f",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDUNMDVKCj8DliR\nJcd2YcaMuvjJ/Ux+P1py66wBJw19ZhPD5hWh5mmjRxirXLLIHxTEJDvNzGagTBJP\na7uGwN0y1fb6p8KTC8qajgJbPjfEBlKxSiMGG6kw2AlgW1ln3Vm9nhGe2QYK2LrW\nqDSE6i4za394R2vrHfchCpjH7f9Fe/BdpVLdgUQkqrUk3hg9lXvuJXjyC1n5yMl6\ngxMLrhGY0rpTT5Akl50ZXOyqNAIhQlnS90+Z7o22f9+o+x1lfDux1j7p+JxXa7tp\nuUgVCRbijhCNqVPG4AuSAvmYxMrUcRMnVJrkUjgw2gWxMuFN/n1mQOXGVzjMfl7d\n4qRyWUbxAgMBAAECggEAD3FQWCK+Sst7eAKdD5khcxPXL5Ham3ReT28lmwbdxTKk\nvRSVHe1P4jU2DyBllUknwHdXj8wwarlmerefE7kcz8qA2PBU6VEKGzG666ttMPt5\n0JOR1Wu1ZgvOsN+s87FIytMCOsJV3Xu0qxLeEY8eMhlAUz81VAyf85xbDm+cLFDs\n+kIb4Ci/jktXG730jWXePMnWpMwS17olZOoImxCggsWZSYAEPH1dvAn4oH+wthOo\nkrDbynnquGNbCoIPUUtomXNWhi/gA/Y99fyM6L+3cA+KqjjFkKjzQrO2rXP4R/Rw\nl4hGbXwUwg06RM+ONCjjWAGltfUwHk6KYdgsV+sjzQKBgQDqiUQGwD0AaPV7aFfV\nES5pqhBDj0sf5iiipu2ymbIkjSwv3qVjJG5fQgUpq01u3ds1P1fGhyxkwEIQjmqr\nAljtJOWg0kCa6KDhqvfe7cKw7h9DszU3iRgWteVf3lnPGnSTfyqLW9uB96MLMHHL\nnHO7pGiWnu4eoqWidrKAINEHdQKBgQDnoFXbXUiS9WBQPHXtwQoAUOF7FAxmlfRW\nfRYpI5bmwd2HrDDhJBetVXW0Zal+I/EO8+x7kaPjkVZv7ZBcvH+R+gddV9riiXFV\npY2vWN2w3CGuSI/0EU8GqLiZklcHl9zTnApW78dIHGrvLMySJV9b0QJd9pVJseV5\nYT2GNRWODQKBgQDTb4/+LgxQdE7qRDT6hpS6+W/UGDh3t3xmteqQGnM49HQja6rZ\n6BwAkHorCJ20FxnptQMinPXulkx4tIuBQ4p7r8m75BAOFy4Cg6kWNm5QJzvUQpj1\nSgiHYNA6Ty/Tv1vdJMVsARGw51j7W18bWh4TybHoJ7svrx13i158mBkZiQKBgQCL\nlFZIw/UJAi8RCu4x4QMq35KRPaqfYzwDpotlLRoxYqAhswUdl0dhX793f0/dQMFy\nNlHKwSAW8a0589nr2Hezuw0XFetEWnjemM5B3XZyrqTpRrbg6FFL/P6JJOOnIr+j\nEUQ10XawoNdb3A5G/5hwVwprHz4lU7uqIowVxQWBPQKBgDKkU2tsIIAwID7bWC83\nqC5ZkMaos+fu2/1XxPGjTM4lAc5IlwaqYiMFhNIjs1Zo/7JTeTMp/DJXByzSGr0E\nBdBLyU5yCx2IFoo9SS2HcXfMz0Zie7WeNwQhai61FU+JGYio2kFr5ppbU8jrFVJF\n9dcw15rpSu0U2+moYkcBTJbu\n-----END PRIVATE KEY-----\n",
+  "client_email": "vison-api@my-project-playground-395801.iam.gserviceaccount.com",
+  "client_id": "118329144568662690519",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/vison-api%40my-project-playground-395801.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
