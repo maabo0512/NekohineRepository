@@ -79,6 +79,15 @@ def display_check_screen(conn, c):
     credentials = service_account.Credentials.from_service_account_file("credentials.json")
     client = vision_v1.ImageAnnotatorClient(credentials=credentials)
 
+    # データベースからNGワードを取得する関数
+    def get_ng_words_from_db():
+        c.execute("SELECT NGワード, 警告文, 関連法令規定 FROM ng_words")
+        ng_words_data = c.fetchall()
+        return {ng_word: (warning, law) for ng_word, warning, law in ng_words_data}
+
+    # NGワードをデータベースから取得
+    ng_words_and_warnings = get_ng_words_from_db()
+
     # イメージからテキストを抽出する関数
     def extract_text_from_image(image):
         # 画像を読み込み
@@ -95,20 +104,6 @@ def display_check_screen(conn, c):
         response = client.text_detection(image=image)
         text = response.text_annotations[0].description
         return text
-
-    # NGワードとNG理由の辞書
-    ng_words_and_reasons = {
-        "業界初": "調査・検証結果を示しましょう",
-        "業界No.1": "調査・検証結果を示しましょう",
-        "市場満足度●％": "調査・検証結果を示しましょう",
-        "顧客満足度●％": "調査・検証結果を示しましょう",
-        "一般的な": "現時点で一般的に流通しているか、改めて確認しましょう",
-        "著しく": "効果を有する根拠（試験結果）も記載しましょう",
-        "劇的に": "効果を有する根拠（試験結果）も記載しましょう",
-        "インフルエンザウイルス": "具体的なウイルス名は記載できません",
-        "●●菌": "具体的な菌名は記載できません",
-        "具体的な社名": "製品比較の際に、具体的な社名の記載は避けてください"
-    }
 
     # ファイルアップロード
     uploaded_file = st.file_uploader("画像またはPDFファイルをアップロードしてください", type=["jpg", "png", "jpeg", "pdf"])
@@ -144,23 +139,23 @@ def display_check_screen(conn, c):
 
             # 各文に対してNGワードを検出
             for sentence in sentences:
-                for ng_word, ng_reason in ng_words_and_reasons.items():
+                for ng_word, (warning, law) in ng_words_and_warnings.items():
                     if ng_word in sentence:
                         ng_word_detected = True
-                        # NGカテゴリーにNGワードと理由を追加
                         if ng_word not in ng_categories:
-                            ng_categories[ng_word] = [ng_reason]
+                            ng_categories[ng_word] = (warning, law)
                         else:
-                            ng_categories[ng_word].append(ng_reason)
+                            ng_categories[ng_word] = ng_categories[ng_word] + (warning, law)
 
             # 判定結果のセクションを追加
             st.subheader("判定結果")
 
             # NGワードが検出された場合、各NGカテゴリーごとに表示
             if ng_word_detected:
-                for ng_word, ng_reasons in ng_categories.items():
+                for ng_word, (warnings, laws) in ng_categories.items():
                     st.write(f"NGワード: {ng_word}")
-                    st.write("NG理由:", ', '.join(ng_reasons))
+                    st.write("警告文:", warnings)
+                    st.write("関連法令規定:", laws)
             else:
                 st.write("NGワードは検出されませんでした.")
     else:
