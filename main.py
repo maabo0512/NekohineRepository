@@ -21,8 +21,9 @@ MOCK_USER_INFO = {
 def setup_database():
     conn = sqlite3.connect('app_data.db', check_same_thread=False)
     c = conn.cursor()
+    # 既存のテーブルの作成
     c.execute('''CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY, 名前 TEXT, 役割 TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS ng_words (ID INTEGER PRIMARY KEY, NGワード TEXT, NG理由 TEXT, 登録日時 TEXT, 登録者 TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS ng_words (ID INTEGER PRIMARY KEY, NGワード TEXT, 警告文 TEXT, 関連法令規定 TEXT, 登録日時 TEXT, 登録者 TEXT)''')
     conn.commit()
     return conn, c
 
@@ -33,6 +34,7 @@ def login(username, password):
 # メイン関数
 def main():
     conn, c = setup_database()
+
     st.title("コンプラ・セルフチェッカー")
 
     if 'logged_in' not in st.session_state:
@@ -181,7 +183,7 @@ def manage_users(conn, c):
 def display_user_list(conn, c):
     c.execute("SELECT * FROM users")
     user_data = c.fetchall()
-    user_df = pd.DataFrame(user_data, columns=['ID', '名前', '役割'])
+    user_df = pd.DataFrame(user_data, columns=['ID', '名前', '役割']).set_index('ID')
     st.subheader("ユーザー一覧")
     st.table(user_df)
 
@@ -217,20 +219,31 @@ def manage_ng_words(conn, c):
         display_ng_words_list(conn, c)
 
 def display_ng_words_list(conn, c):
+    # テーブルの列構造を確認
+    c.execute("PRAGMA table_info(ng_words);")
+    columns_info = c.fetchall()
+    # 列名のリストを作成
+    column_names = [column[1] for column in columns_info]
+
+    # NGワードのデータを取得
     c.execute("SELECT * FROM ng_words")
     ng_word_data = c.fetchall()
-    ng_word_df = pd.DataFrame(ng_word_data, columns=['ID', 'NGワード', 'NG理由', '登録日時', '登録者'])
+
+    # 列名に基づいてDataFrameを作成
+    ng_word_df = pd.DataFrame(ng_word_data, columns=column_names).set_index('ID')
     st.subheader("NGワード一覧")
     st.table(ng_word_df)
 
 def add_new_ng_word(conn, c):
     st.subheader("新しいNGワードを追加")
     new_ng_word = st.text_input("NGワードを入力してください:")
-    new_ng_reason = st.text_input("NG理由を入力してください:")
+    new_warning_text = st.text_input("警告文を入力してください:")
+    new_related_laws = st.text_input("関連法令・規定を入力してください:")
     add_ng_button = st.button("追加")
     if add_ng_button and new_ng_word:
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute("INSERT INTO ng_words (NGワード, NG理由, 登録日時, 登録者) VALUES (?, ?, ?, ?)", (new_ng_word, new_ng_reason, now, "管理者"))
+        c.execute("INSERT INTO ng_words (NGワード, 警告文, 関連法令規定, 登録日時, 登録者) VALUES (?, ?, ?, ?, ?)",
+        (new_ng_word, new_warning_text, new_related_laws, now, "管理者"))
         conn.commit()
         st.success(f"NGワード「{new_ng_word}」を追加しました。")
         return True
