@@ -344,7 +344,7 @@ def manage_ng_images(conn, c):
         pass
     display_ng_images_list(conn, c)
 
-def create_thumbnail(image, max_size=(100, 100)):
+def create_thumbnail(image, max_size=(300, 300)):
     """
     アップロードされた画像からサムネイルを作成し、指定された最大サイズに合わせて縮小する
     """
@@ -352,9 +352,10 @@ def create_thumbnail(image, max_size=(100, 100)):
     # RGBAモードの画像をRGBモードに変換
     if img.mode == 'RGBA':
         img = img.convert('RGB')
-    img.thumbnail(max_size, Image.ANTIALIAS)
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)  # ANTIALIASからResampling.LANCZOSに変更
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='JPEG')
+    img.save(img_byte_arr, format='JPEG', quality=85)  # JPE    Gの品質を設定
     return img_byte_arr.getvalue()
 
 def add_new_ng_image(conn, c):
@@ -378,21 +379,27 @@ def delete_ng_image(conn, c):
     st.subheader("NG画像を削除")
     c.execute("SELECT ID, NG画像タイトル FROM ng_images")
     ng_images = c.fetchall()
-    # 画像のIDを選択するためのセレクトボックス
+
+    # 画像が存在しない場合、処理を中断
+    if not ng_images:
+        st.write("削除するNG画像がありません。")
+        return False
+
     delete_ng_image_option = st.selectbox(
         "削除するNG画像を選択してください:",
-        [(f"{image[0]} - {image[1]}") for image in ng_images]  # IDとタイトルの組み合わせ
+        ng_images,
+        format_func=lambda x: f"{x[0]} - {x[1]}"  # IDとタイトルの組み合わせ
     )
-    delete_ng_image_id = delete_ng_image_option[0]  # タプルからIDを取得
-    delete_ng_image_button = st.button("削除")
-    if delete_ng_image_button and delete_ng_image_id:
-        # 選択されたIDに基づいてデータベースから画像を削除
-        c.execute("DELETE FROM ng_images WHERE ID=?", (delete_ng_image_id,))
-        conn.commit()
-        st.success(f"NG画像ID: {delete_ng_image_id} が削除されました。")
-        return True
-    return False
 
+    if delete_ng_image_option is not None:
+        delete_ng_image_id = delete_ng_image_option[0]  # タプルからIDを取得
+        delete_ng_image_button = st.button("削除")
+        if delete_ng_image_button:
+            c.execute("DELETE FROM ng_images WHERE ID=?", (delete_ng_image_id,))
+            conn.commit()
+            st.success(f"NG画像ID: {delete_ng_image_id} が削除されました。")
+            return True
+    return False
 
 def display_ng_images_list(conn, c):
     c.execute("SELECT * FROM ng_images")
