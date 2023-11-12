@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_modal import Modal
 import sqlite3
 import pandas as pd
 import datetime
@@ -9,6 +10,31 @@ from google.oauth2 import service_account
 import io
 import nltk
 from nltk.tokenize import sent_tokenize
+import cv2
+import numpy as np
+
+# モーダルの初期化
+my_modal = Modal(title="まずはこちらをご確認ください", key="demo_modal_key",max_width=720)
+
+# 初期起動時にモーダルを開く
+if 'modal_opened' not in st.session_state:
+    st.session_state.modal_opened = True
+    my_modal.open()
+
+# モーダルの状態をチェックして表示
+if my_modal.is_open():
+    with my_modal.container():
+        # モーダル内のコンテンツ
+        st.write("お知らせ：社内画像利用ルールの一部改訂に関して　[こちら](https://tech0-jp.com/terms/)")
+        st.write("最新の社内文書取り扱い[こちら](https://654fa2e0676e2a49fcd87dba--dreamy-sable-95c587.netlify.app/)")
+        st.write("コンプライアンスセルフチェッカーのマニュアル　[こちら](https://tech0-jp.com/terms/)")
+        st.write("-------------------------------------------------------------------------")
+        st.title("**今週の要修正事項ランキング！**\n")
+        txt1 = '<p style="color:red;font-size: 30px;"><b>1位：許可が下りていない社内画像を利用していた</b></p>'
+        st.markdown(txt1, unsafe_allow_html=True)
+        st.write("2位：景品表示法違反（優良誤認表示）")
+        st.write("3位：他社商品の誹謗中傷")
+
 
 # モックのユーザー情報
 MOCK_USER_INFO = {
