@@ -379,7 +379,11 @@ def delete_ng_image(conn, c):
     c.execute("SELECT ID, NG画像タイトル FROM ng_images")
     ng_images = c.fetchall()
     # 画像のIDを選択するためのセレクトボックス
-    delete_ng_image_id = st.selectbox("削除するNG画像を選択してください:", [(f"{image[0]} - {image[1]}") for image in ng_images])
+    delete_ng_image_option = st.selectbox(
+        "削除するNG画像を選択してください:",
+        [(f"{image[0]} - {image[1]}") for image in ng_images]  # IDとタイトルの組み合わせ
+    )
+    delete_ng_image_id = delete_ng_image_option[0]  # タプルからIDを取得
     delete_ng_image_button = st.button("削除")
     if delete_ng_image_button and delete_ng_image_id:
         # 選択されたIDに基づいてデータベースから画像を削除
