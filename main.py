@@ -47,11 +47,32 @@ MOCK_USER_INFO = {
 def setup_database():
     conn = sqlite3.connect('app_data.db', check_same_thread=False)
     c = conn.cursor()
-    # 既存のテーブルの作成
+
+    # テーブルの存在確認と作成
     c.execute('''CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY, 名前 TEXT, 役割 TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS ng_words (ID INTEGER PRIMARY KEY, NGワード TEXT, 警告文 TEXT, 関連法令規定 TEXT, 登録日時 TEXT, 登録者 TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS ng_words (
+        ID INTEGER PRIMARY KEY, 
+        NGワード TEXT, 
+        登録日時 TEXT, 
+        登録者 TEXT
+    )''')
+
+    # ng_words テーブルの列情報を取得
+    c.execute("PRAGMA table_info(ng_words);")
+    columns_info = c.fetchall()
+    columns_names = [column[1] for column in columns_info]
+
+    # 警告文 列がない場合、列を追加
+    if '警告文' not in columns_names:
+        c.execute("ALTER TABLE ng_words ADD COLUMN 警告文 TEXT")
+
+    # 関連法令規定 列がない場合、列を追加
+    if '関連法令規定' not in columns_names:
+        c.execute("ALTER TABLE ng_words ADD COLUMN 関連法令規定 TEXT")
+
     conn.commit()
     return conn, c
+
 
 # ログイン機能
 def login(username, password):
@@ -258,7 +279,7 @@ def display_ng_words_list(conn, c):
 def add_new_ng_word(conn, c):
     st.subheader("新しいNGワードを追加")
     new_ng_word = st.text_input("NGワードを入力してください:")
-    new_warning_text = st.text_input("警告文を入力してください:")
+    new_warning_text = st.text_input("警告文（NG理由）を入力してください:")
     new_related_laws = st.text_input("関連法令・規定を入力してください:")
     add_ng_button = st.button("追加")
     if add_ng_button and new_ng_word:
