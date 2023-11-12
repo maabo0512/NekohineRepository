@@ -1,4 +1,5 @@
 streamlit
+streamlit_modal
 sqlite3
 pandas
 Pillow
@@ -6,3 +7,5 @@ PyPDF2
 google-cloud-vision
 google-auth
 nltk
+cv2
+numpy

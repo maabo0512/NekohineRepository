@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_modal import Modal
 import sqlite3
 import pandas as pd
 import datetime
@@ -9,6 +10,64 @@ from google.oauth2 import service_account
 import io
 import nltk
 from nltk.tokenize import sent_tokenize
+import cv2
+import numpy as np
+
+# 画像マッチング関数
+def image_matching(uploaded_image, ng_image_path='train_original.jpg'):
+    # NG画像を読み込む
+    ng_image = cv2.imread(ng_image_path)
+    gray_ng_image = cv2.cvtColor(ng_image, cv2.COLOR_BGR2GRAY)
+
+    # アップロードされた画像をOpenCV形式に変換
+    uploaded_image_np = cv2.imdecode(np.frombuffer(uploaded_image.read(), np.uint8), cv2.IMREAD_COLOR)
+
+    # 画像をグレースケールに変換
+    gray_uploaded_image = cv2.cvtColor(uploaded_image_np, cv2.COLOR_BGR2GRAY)
+
+    # SIFT特徴点検出器を初期化
+    sift = cv2.SIFT_create()
+
+    # 特徴点と特徴記述子を抽出
+    keypoints_ng_image, descriptors_ng_image = sift.detectAndCompute(gray_ng_image, None)
+    keypoints_uploaded_image, descriptors_uploaded_image = sift.detectAndCompute(gray_uploaded_image, None)
+
+    # マッチングアルゴリズムを選択
+    bf = cv2.BFMatcher()
+
+    # 特徴記述子をマッチング
+    matches = bf.knnMatch(descriptors_ng_image, descriptors_uploaded_image, k=2)
+
+    # マッチングの閾値を設定
+    ratio = 0.75
+    good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
+
+    # 部分一致のしきい値を設定（任意の値）
+    min_good_matches = 100
+
+    return len(good_matches) >= min_good_matches
+
+# モーダルの初期化
+my_modal = Modal(title="まずはこちらをご確認ください", key="demo_modal_key", max_width=720)
+
+# 初期起動時にモーダルを開く
+if 'modal_opened' not in st.session_state:
+    st.session_state.modal_opened = True
+    my_modal.open()
+
+# モーダルの状態をチェックして表示
+if my_modal.is_open():
+    with my_modal.container():
+        # モーダル内のコンテンツ
+        st.write("お知らせ：社内画像利用ルールの一部改訂に関して　[こちら](https://tech0-jp.com/terms/)")
+        st.write("最新の社内文書取り扱い[こちら](https://654fa2e0676e2a49fcd87dba--dreamy-sable-95c587.netlify.app/)")
+        st.write("コンプライアンスセルフチェッカーのマニュアル　[こちら](https://tech0-jp.com/terms/)")
+        st.write("-------------------------------------------------------------------------")
+        st.title("**今週の要修正事項ランキング！**\n")
+        txt1 = '<p style="color:red;font-size: 30px;"><b>1位：許可が下りていない社内画像を利用していた</b></p>'
+        st.markdown(txt1, unsafe_allow_html=True)
+        st.write("2位：景品表示法違反（優良誤認表示）")
+        st.write("3位：他社商品の誹謗中傷")
 
 # モックのユーザー情報
 MOCK_USER_INFO = {
@@ -21,9 +80,29 @@ MOCK_USER_INFO = {
 def setup_database():
     conn = sqlite3.connect('app_data.db', check_same_thread=False)
     c = conn.cursor()
-    # 既存のテーブルの作成
+
+    # テーブルの存在確認と作成
     c.execute('''CREATE TABLE IF NOT EXISTS users (ID INTEGER PRIMARY KEY, 名前 TEXT, 役割 TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS ng_words (ID INTEGER PRIMARY KEY, NGワード TEXT, 警告文 TEXT, 関連法令規定 TEXT, 登録日時 TEXT, 登録者 TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS ng_words (
+        ID INTEGER PRIMARY KEY, 
+        NGワード TEXT, 
+        登録日時 TEXT, 
+        登録者 TEXT
+    )''')
+
+    # ng_words テーブルの列情報を取得
+    c.execute("PRAGMA table_info(ng_words);")
+    columns_info = c.fetchall()
+    columns_names = [column[1] for column in columns_info]
+
+    # 警告文 列がない場合、列を追加
+    if '警告文' not in columns_names:
+        c.execute("ALTER TABLE ng_words ADD COLUMN 警告文 TEXT")
+
+    # 関連法令規定 列がない場合、列を追加
+    if '関連法令規定' not in columns_names:
+        c.execute("ALTER TABLE ng_words ADD COLUMN 関連法令規定 TEXT")
+
     conn.commit()
     return conn, c
 
@@ -147,8 +226,8 @@ def display_check_screen(conn, c):
                         else:
                             ng_categories[ng_word] = ng_categories[ng_word] + (warning, law)
 
-            # 判定結果のセクションを追加
-            st.subheader("判定結果")
+            # NGワード判定結果のセクションを追加
+            st.subheader("NGワード判定結果")
 
             # NGワードが検出された場合、各NGカテゴリーごとに表示
             if ng_word_detected:
@@ -158,6 +237,17 @@ def display_check_screen(conn, c):
                     st.write("関連法令規定:", laws)
             else:
                 st.write("NGワードは検出されませんでした.")
+
+            # NGワード判定結果のセクションを追加
+            st.subheader("NG画像判定結果")
+
+            # 画像マッチングを実行
+            if uploaded_file.type.startswith('image/'):
+                is_ng_image_detected = image_matching(uploaded_file)
+                if is_ng_image_detected:
+                    st.write("NG画像が検出されました。")
+                else:
+                    st.write("画像に問題はありません。")
     else:
         st.write("ファイルがアップロードされていません。")
 
@@ -232,7 +322,7 @@ def display_ng_words_list(conn, c):
 def add_new_ng_word(conn, c):
     st.subheader("新しいNGワードを追加")
     new_ng_word = st.text_input("NGワードを入力してください:")
-    new_warning_text = st.text_input("警告文を入力してください:")
+    new_warning_text = st.text_input("警告文（NG理由）を入力してください:")
     new_related_laws = st.text_input("関連法令・規定を入力してください:")
     add_ng_button = st.button("追加")
     if add_ng_button and new_ng_word:
