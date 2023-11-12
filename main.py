@@ -45,7 +45,8 @@ def image_matching(uploaded_image, ng_image_path='train_original.jpg'):
     # 部分一致のしきい値を設定（任意の値）
     min_good_matches = 100
 
-    return len(good_matches) >= min_good_matches
+    # NG画像の検出結果と画像のパスを返す
+    return len(good_matches) >= min_good_matches, ng_image_path
 
 # モーダルの初期化
 my_modal = Modal(title="まずはこちらをご確認ください", key="demo_modal_key", max_width=720)
@@ -116,7 +117,8 @@ def main():
 
     st.title("コンプラ・セルフチェッカー")
 
-    if 'logged_in' not in st.session_state:
+    # ログイン状態に基づいて、ログイン画面を表示するかどうかを決定
+    if 'logged_in' not in st.session_state or not st.session_state['logged_in']:
         display_login()
 
     if 'logged_in' in st.session_state and st.session_state['logged_in']:
@@ -133,6 +135,8 @@ def display_login():
                 st.session_state['role'] = MOCK_USER_INFO['role']
                 st.session_state['main_page'] = "判定画面"
                 st.success("ログインに成功しました！")
+                # ログイン成功後に画面を更新してログインフォームを非表示にする
+                st.experimental_rerun()
             else:
                 st.error("ログインに失敗しました。ユーザー名、パスワードを確認してください。")
 
@@ -243,9 +247,10 @@ def display_check_screen(conn, c):
 
             # 画像マッチングを実行
             if uploaded_file.type.startswith('image/'):
-                is_ng_image_detected = image_matching(uploaded_file)
+                is_ng_image_detected, detected_ng_image_path = image_matching(uploaded_file)
                 if is_ng_image_detected:
-                    st.write("NG画像が検出されました。")
+                    st.write("使用禁止の画像が下記の通り検出されています。確認してください。")
+                    st.image(detected_ng_image_path, caption='検出されたNG画像', use_column_width=True)
                 else:
                     st.write("画像に問題はありません。")
     else:
@@ -299,25 +304,9 @@ def delete_user(conn, c):
 
 # NGワード管理の処理
 def manage_ng_words(conn, c):
-    display_ng_words_list(conn, c)
     if add_new_ng_word(conn, c) or delete_ng_word(conn, c):
-        display_ng_words_list(conn, c)
-
-def display_ng_words_list(conn, c):
-    # テーブルの列構造を確認
-    c.execute("PRAGMA table_info(ng_words);")
-    columns_info = c.fetchall()
-    # 列名のリストを作成
-    column_names = [column[1] for column in columns_info]
-
-    # NGワードのデータを取得
-    c.execute("SELECT * FROM ng_words")
-    ng_word_data = c.fetchall()
-
-    # 列名に基づいてDataFrameを作成
-    ng_word_df = pd.DataFrame(ng_word_data, columns=column_names).set_index('ID')
-    st.subheader("NGワード一覧")
-    st.table(ng_word_df)
+        pass
+    display_ng_words_list(conn, c)
 
 def add_new_ng_word(conn, c):
     st.subheader("新しいNGワードを追加")
@@ -346,6 +335,23 @@ def delete_ng_word(conn, c):
         st.success(f"NGワード「{delete_ng_word}」を削除しました。")
         return True
     return False
+
+def display_ng_words_list(conn, c):
+    # テーブルの列構造を確認
+    c.execute("PRAGMA table_info(ng_words);")
+    columns_info = c.fetchall()
+    # 列名のリストを作成
+    column_names = [column[1] for column in columns_info]
+
+    # NGワードのデータを取得
+    c.execute("SELECT * FROM ng_words")
+    ng_word_data = c.fetchall()
+
+    # 列名に基づいてDataFrameを作成
+    ng_word_df = pd.DataFrame(ng_word_data, columns=column_names).set_index('ID')
+    st.subheader("NGワード一覧")
+    st.table(ng_word_df)
+
 
 # 以下、他の管理機能に関する詳細な処理を追加
 
