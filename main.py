@@ -13,8 +13,42 @@ from nltk.tokenize import sent_tokenize
 import cv2
 import numpy as np
 
+# 画像マッチング関数
+def image_matching(uploaded_image, ng_image_path='train_original.jpg'):
+    # NG画像を読み込む
+    ng_image = cv2.imread(ng_image_path)
+    gray_ng_image = cv2.cvtColor(ng_image, cv2.COLOR_BGR2GRAY)
+
+    # アップロードされた画像をOpenCV形式に変換
+    uploaded_image_np = cv2.imdecode(np.frombuffer(uploaded_image.read(), np.uint8), cv2.IMREAD_COLOR)
+
+    # 画像をグレースケールに変換
+    gray_uploaded_image = cv2.cvtColor(uploaded_image_np, cv2.COLOR_BGR2GRAY)
+
+    # SIFT特徴点検出器を初期化
+    sift = cv2.SIFT_create()
+
+    # 特徴点と特徴記述子を抽出
+    keypoints_ng_image, descriptors_ng_image = sift.detectAndCompute(gray_ng_image, None)
+    keypoints_uploaded_image, descriptors_uploaded_image = sift.detectAndCompute(gray_uploaded_image, None)
+
+    # マッチングアルゴリズムを選択
+    bf = cv2.BFMatcher()
+
+    # 特徴記述子をマッチング
+    matches = bf.knnMatch(descriptors_ng_image, descriptors_uploaded_image, k=2)
+
+    # マッチングの閾値を設定
+    ratio = 0.75
+    good_matches = [m for m, n in matches if m.distance < ratio * n.distance]
+
+    # 部分一致のしきい値を設定（任意の値）
+    min_good_matches = 100
+
+    return len(good_matches) >= min_good_matches
+
 # モーダルの初期化
-my_modal = Modal(title="まずはこちらをご確認ください", key="demo_modal_key",max_width=720)
+my_modal = Modal(title="まずはこちらをご確認ください", key="demo_modal_key", max_width=720)
 
 # 初期起動時にモーダルを開く
 if 'modal_opened' not in st.session_state:
@@ -34,7 +68,6 @@ if my_modal.is_open():
         st.markdown(txt1, unsafe_allow_html=True)
         st.write("2位：景品表示法違反（優良誤認表示）")
         st.write("3位：他社商品の誹謗中傷")
-
 
 # モックのユーザー情報
 MOCK_USER_INFO = {
@@ -72,7 +105,6 @@ def setup_database():
 
     conn.commit()
     return conn, c
-
 
 # ログイン機能
 def login(username, password):
@@ -194,8 +226,8 @@ def display_check_screen(conn, c):
                         else:
                             ng_categories[ng_word] = ng_categories[ng_word] + (warning, law)
 
-            # 判定結果のセクションを追加
-            st.subheader("判定結果")
+            # NGワード判定結果のセクションを追加
+            st.subheader("NGワード判定結果")
 
             # NGワードが検出された場合、各NGカテゴリーごとに表示
             if ng_word_detected:
@@ -205,6 +237,17 @@ def display_check_screen(conn, c):
                     st.write("関連法令規定:", laws)
             else:
                 st.write("NGワードは検出されませんでした.")
+
+            # NGワード判定結果のセクションを追加
+            st.subheader("NG画像判定結果")
+
+            # 画像マッチングを実行
+            if uploaded_file.type.startswith('image/'):
+                is_ng_image_detected = image_matching(uploaded_file)
+                if is_ng_image_detected:
+                    st.write("NG画像が検出されました。")
+                else:
+                    st.write("画像に問題はありません。")
     else:
         st.write("ファイルがアップロードされていません。")
 
