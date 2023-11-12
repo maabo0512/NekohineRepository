@@ -262,13 +262,15 @@ def manage_content(selected_option, conn, c):
         manage_users(conn, c)
     elif selected_option == "NGワード管理":
         manage_ng_words(conn, c)
+    elif selected_option == "NG画像管理":
+        manage_ng_images(conn, c)
     # 以下、他の管理機能に関する処理
 
-# ユーザー管理の処理
+    # ユーザー管理の処理
 def manage_users(conn, c):
-    display_user_list(conn, c)
     if add_new_user(conn, c) or delete_user(conn, c):
-        display_user_list(conn, c)
+        pass
+    display_user_list(conn, c)
 
 def display_user_list(conn, c):
     c.execute("SELECT * FROM users")
@@ -335,6 +337,96 @@ def delete_ng_word(conn, c):
         st.success(f"NGワード「{delete_ng_word}」を削除しました。")
         return True
     return False
+
+# NG画像管理の処理
+def manage_ng_images(conn, c):
+    if add_new_ng_image(conn, c) or delete_ng_image(conn, c):
+        pass
+    display_ng_images_list(conn, c)
+
+def create_thumbnail(image, max_size=(100, 100)):
+    """
+    アップロードされた画像からサムネイルを作成し、指定された最大サイズに合わせて縮小する
+    """
+    img = Image.open(image)
+    # RGBAモードの画像をRGBモードに変換
+    if img.mode == 'RGBA':
+        img = img.convert('RGB')
+    img.thumbnail(max_size, Image.ANTIALIAS)
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='JPEG')
+    return img_byte_arr.getvalue()
+
+def add_new_ng_image(conn, c):
+    st.subheader("新しいNG画像を追加")
+    uploaded_image = st.file_uploader("NG画像をアップロードしてください:", type=["jpg", "png", "jpeg"])
+    new_ng_image_title = st.text_input("NG画像タイトルを入力してください:")
+    new_warning_text = st.text_input("警告文（NG理由）を入力してください:")
+    add_ng_image_button = st.button("追加")
+    if add_ng_image_button and uploaded_image:
+        # サムネイルを作成
+        thumbnail = create_thumbnail(uploaded_image)
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("INSERT INTO ng_images (NG画像, NG画像タイトル, 警告文, 登録日時, 登録者) VALUES (?, ?, ?, ?, ?)",
+                (thumbnail, new_ng_image_title, new_warning_text, now, "管理者"))
+        conn.commit()
+        st.success(f"NG画像「{new_ng_image_title}」を追加しました。")
+        return True
+    return False
+
+def delete_ng_image(conn, c):
+    st.subheader("NG画像を削除")
+    c.execute("SELECT ID, NG画像タイトル FROM ng_images")
+    ng_images = c.fetchall()
+    # 画像のIDを選択するためのセレクトボックス
+    delete_ng_image_id = st.selectbox("削除するNG画像を選択してください:", [(f"{image[0]} - {image[1]}") for image in ng_images])
+    delete_ng_image_button = st.button("削除")
+    if delete_ng_image_button and delete_ng_image_id:
+        # 選択されたIDに基づいてデータベースから画像を削除
+        c.execute("DELETE FROM ng_images WHERE ID=?", (delete_ng_image_id,))
+        conn.commit()
+        st.success(f"NG画像ID: {delete_ng_image_id} が削除されました。")
+        return True
+    return False
+
+
+def display_ng_images_list(conn, c):
+    c.execute("SELECT * FROM ng_images")
+    ng_image_data = c.fetchall()
+    
+    # 画像データは表示できないため、列名を適切に調整
+    ng_image_df = pd.DataFrame(ng_image_data, columns=['ID', 'NG画像', 'NG画像タイトル', '警告文', '登録日時', '登録者']).set_index('ID')
+    st.subheader("NG画像一覧")
+    st.table(ng_image_df.drop(columns=['NG画像']))  # 画像データは除外して表示
+
+    # 一行に表示するサムネイルの数を設定
+    thumbnails_per_row = 4
+
+    # 画像データの変換と表示
+    for i in range(0, len(ng_image_data), thumbnails_per_row):
+        cols = st.columns(thumbnails_per_row)
+        for j in range(thumbnails_per_row):
+            if i + j < len(ng_image_data):
+                image_data = ng_image_data[i + j]
+                image = Image.open(io.BytesIO(image_data[1]))
+                # `use_column_width`をTrueに設定して画像が列幅に合わせて調整されるようにする
+                cols[j].image(image, caption=image_data[2], use_column_width=True)
+
+# データベースの設定とテーブル作成の部分にNG画像テーブルの作成を追加
+def setup_database():
+    conn = sqlite3.connect('app_data.db', check_same_thread=False)
+    c = conn.cursor()
+    # ... 既存のテーブル作成コード ...
+    c.execute('''CREATE TABLE IF NOT EXISTS ng_images (
+        ID INTEGER PRIMARY KEY,
+        NG画像 BLOB,
+        NG画像タイトル TEXT,
+        警告文 TEXT,
+        登録日時 TEXT,
+        登録者 TEXT
+    )''')
+    conn.commit()
+    return conn, c
 
 def display_ng_words_list(conn, c):
     # テーブルの列構造を確認
