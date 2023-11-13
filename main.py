@@ -61,7 +61,7 @@ if my_modal.is_open():
     with my_modal.container():
         # モーダル内のコンテンツ
         st.write("お知らせ：社内画像利用ルールの一部改訂に関して　[こちら](https://tech0-jp.com/terms/)")
-        st.write("最新の社内文書取り扱い[こちら](https://654fa2e0676e2a49fcd87dba--dreamy-sable-95c587.netlify.app/)")
+        st.write("最新の社内文書取り扱い[こちら](https://dreamy-sable-95c587.netlify.app/)")
         st.write("コンプライアンスセルフチェッカーのマニュアル　[こちら](https://tech0-jp.com/terms/)")
         st.write("-------------------------------------------------------------------------")
         st.title("**今週の要修正事項ランキング！**\n")
