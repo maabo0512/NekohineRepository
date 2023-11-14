@@ -45,7 +45,8 @@ def image_matching(uploaded_image, ng_image_path='train_original.jpg'):
     # 部分一致のしきい値を設定（任意の値）
     min_good_matches = 100
 
-    return len(good_matches) >= min_good_matches
+    # NG画像の検出結果と画像のパスを返す
+    return len(good_matches) >= min_good_matches, ng_image_path
 
 # モーダルの初期化
 my_modal = Modal(title="まずはこちらをご確認ください", key="demo_modal_key", max_width=720)
@@ -60,7 +61,7 @@ if my_modal.is_open():
     with my_modal.container():
         # モーダル内のコンテンツ
         st.write("お知らせ：社内画像利用ルールの一部改訂に関して　[こちら](https://tech0-jp.com/terms/)")
-        st.write("最新の社内文書取り扱い[こちら](https://654fa2e0676e2a49fcd87dba--dreamy-sable-95c587.netlify.app/)")
+        st.write("最新の社内文書取り扱い[こちら](https://dreamy-sable-95c587.netlify.app/)")
         st.write("コンプライアンスセルフチェッカーのマニュアル　[こちら](https://tech0-jp.com/terms/)")
         st.write("-------------------------------------------------------------------------")
         st.title("**今週の要修正事項ランキング！**\n")
@@ -116,7 +117,8 @@ def main():
 
     st.title("コンプラ・セルフチェッカー")
 
-    if 'logged_in' not in st.session_state:
+    # ログイン状態に基づいて、ログイン画面を表示するかどうかを決定
+    if 'logged_in' not in st.session_state or not st.session_state['logged_in']:
         display_login()
 
     if 'logged_in' in st.session_state and st.session_state['logged_in']:
@@ -133,6 +135,8 @@ def display_login():
                 st.session_state['role'] = MOCK_USER_INFO['role']
                 st.session_state['main_page'] = "判定画面"
                 st.success("ログインに成功しました！")
+                # ログイン成功後に画面を更新してログインフォームを非表示にする
+                st.experimental_rerun()
             else:
                 st.error("ログインに失敗しました。ユーザー名、パスワードを確認してください。")
 
@@ -243,9 +247,10 @@ def display_check_screen(conn, c):
 
             # 画像マッチングを実行
             if uploaded_file.type.startswith('image/'):
-                is_ng_image_detected = image_matching(uploaded_file)
+                is_ng_image_detected, detected_ng_image_path = image_matching(uploaded_file)
                 if is_ng_image_detected:
-                    st.write("NG画像が検出されました。")
+                    st.write("使用禁止の画像が下記の通り検出されています。確認してください。")
+                    st.image(detected_ng_image_path, caption='検出されたNG画像', use_column_width=True)
                 else:
                     st.write("画像に問題はありません。")
     else:
@@ -257,13 +262,15 @@ def manage_content(selected_option, conn, c):
         manage_users(conn, c)
     elif selected_option == "NGワード管理":
         manage_ng_words(conn, c)
+    elif selected_option == "NG画像管理":
+        manage_ng_images(conn, c)
     # 以下、他の管理機能に関する処理
 
-# ユーザー管理の処理
+    # ユーザー管理の処理
 def manage_users(conn, c):
-    display_user_list(conn, c)
     if add_new_user(conn, c) or delete_user(conn, c):
-        display_user_list(conn, c)
+        pass
+    display_user_list(conn, c)
 
 def display_user_list(conn, c):
     c.execute("SELECT * FROM users")
@@ -299,25 +306,9 @@ def delete_user(conn, c):
 
 # NGワード管理の処理
 def manage_ng_words(conn, c):
-    display_ng_words_list(conn, c)
     if add_new_ng_word(conn, c) or delete_ng_word(conn, c):
-        display_ng_words_list(conn, c)
-
-def display_ng_words_list(conn, c):
-    # テーブルの列構造を確認
-    c.execute("PRAGMA table_info(ng_words);")
-    columns_info = c.fetchall()
-    # 列名のリストを作成
-    column_names = [column[1] for column in columns_info]
-
-    # NGワードのデータを取得
-    c.execute("SELECT * FROM ng_words")
-    ng_word_data = c.fetchall()
-
-    # 列名に基づいてDataFrameを作成
-    ng_word_df = pd.DataFrame(ng_word_data, columns=column_names).set_index('ID')
-    st.subheader("NGワード一覧")
-    st.table(ng_word_df)
+        pass
+    display_ng_words_list(conn, c)
 
 def add_new_ng_word(conn, c):
     st.subheader("新しいNGワードを追加")
@@ -346,6 +337,124 @@ def delete_ng_word(conn, c):
         st.success(f"NGワード「{delete_ng_word}」を削除しました。")
         return True
     return False
+
+# NG画像管理の処理
+def manage_ng_images(conn, c):
+    if add_new_ng_image(conn, c) or delete_ng_image(conn, c):
+        pass
+    display_ng_images_list(conn, c)
+
+def create_thumbnail(image, max_size=(300, 300)):
+    """
+    アップロードされた画像からサムネイルを作成し、指定された最大サイズに合わせて縮小する
+    """
+    img = Image.open(image)
+    # RGBAモードの画像をRGBモードに変換
+    if img.mode == 'RGBA':
+        img = img.convert('RGB')
+    img.thumbnail(max_size, Image.Resampling.LANCZOS)  # ANTIALIASからResampling.LANCZOSに変更
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='JPEG')
+    img.save(img_byte_arr, format='JPEG', quality=85)  # JPE    Gの品質を設定
+    return img_byte_arr.getvalue()
+
+def add_new_ng_image(conn, c):
+    st.subheader("新しいNG画像を追加")
+    uploaded_image = st.file_uploader("NG画像をアップロードしてください:", type=["jpg", "png", "jpeg"])
+    new_ng_image_title = st.text_input("NG画像タイトルを入力してください:")
+    new_warning_text = st.text_input("警告文（NG理由）を入力してください:")
+    add_ng_image_button = st.button("追加")
+    if add_ng_image_button and uploaded_image:
+        # サムネイルを作成
+        thumbnail = create_thumbnail(uploaded_image)
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("INSERT INTO ng_images (NG画像, NG画像タイトル, 警告文, 登録日時, 登録者) VALUES (?, ?, ?, ?, ?)",
+                (thumbnail, new_ng_image_title, new_warning_text, now, "管理者"))
+        conn.commit()
+        st.success(f"NG画像「{new_ng_image_title}」を追加しました。")
+        return True
+    return False
+
+def delete_ng_image(conn, c):
+    st.subheader("NG画像を削除")
+    c.execute("SELECT ID, NG画像タイトル FROM ng_images")
+    ng_images = c.fetchall()
+
+    # 画像が存在しない場合、処理を中断
+    if not ng_images:
+        st.write("削除するNG画像がありません。")
+        return False
+
+    delete_ng_image_option = st.selectbox(
+        "削除するNG画像を選択してください:",
+        ng_images,
+        format_func=lambda x: f"{x[0]} - {x[1]}"  # IDとタイトルの組み合わせ
+    )
+
+    if delete_ng_image_option is not None:
+        delete_ng_image_id = delete_ng_image_option[0]  # タプルからIDを取得
+        delete_ng_image_button = st.button("削除")
+        if delete_ng_image_button:
+            c.execute("DELETE FROM ng_images WHERE ID=?", (delete_ng_image_id,))
+            conn.commit()
+            st.success(f"NG画像ID: {delete_ng_image_id} が削除されました。")
+            return True
+    return False
+
+def display_ng_images_list(conn, c):
+    c.execute("SELECT * FROM ng_images")
+    ng_image_data = c.fetchall()
+    
+    # 画像データは表示できないため、列名を適切に調整
+    ng_image_df = pd.DataFrame(ng_image_data, columns=['ID', 'NG画像', 'NG画像タイトル', '警告文', '登録日時', '登録者']).set_index('ID')
+    st.subheader("NG画像一覧")
+    st.table(ng_image_df.drop(columns=['NG画像']))  # 画像データは除外して表示
+
+    # 一行に表示するサムネイルの数を設定
+    thumbnails_per_row = 4
+
+    # 画像データの変換と表示
+    for i in range(0, len(ng_image_data), thumbnails_per_row):
+        cols = st.columns(thumbnails_per_row)
+        for j in range(thumbnails_per_row):
+            if i + j < len(ng_image_data):
+                image_data = ng_image_data[i + j]
+                image = Image.open(io.BytesIO(image_data[1]))
+                # `use_column_width`をTrueに設定して画像が列幅に合わせて調整されるようにする
+                cols[j].image(image, caption=image_data[2], use_column_width=True)
+
+# データベースの設定とテーブル作成の部分にNG画像テーブルの作成を追加
+def setup_database():
+    conn = sqlite3.connect('app_data.db', check_same_thread=False)
+    c = conn.cursor()
+    # ... 既存のテーブル作成コード ...
+    c.execute('''CREATE TABLE IF NOT EXISTS ng_images (
+        ID INTEGER PRIMARY KEY,
+        NG画像 BLOB,
+        NG画像タイトル TEXT,
+        警告文 TEXT,
+        登録日時 TEXT,
+        登録者 TEXT
+    )''')
+    conn.commit()
+    return conn, c
+
+def display_ng_words_list(conn, c):
+    # テーブルの列構造を確認
+    c.execute("PRAGMA table_info(ng_words);")
+    columns_info = c.fetchall()
+    # 列名のリストを作成
+    column_names = [column[1] for column in columns_info]
+
+    # NGワードのデータを取得
+    c.execute("SELECT * FROM ng_words")
+    ng_word_data = c.fetchall()
+
+    # 列名に基づいてDataFrameを作成
+    ng_word_df = pd.DataFrame(ng_word_data, columns=column_names).set_index('ID')
+    st.subheader("NGワード一覧")
+    st.table(ng_word_df)
+
 
 # 以下、他の管理機能に関する詳細な処理を追加
 
