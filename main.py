@@ -235,14 +235,17 @@ def display_check_screen(conn, c):
 
             # NGワードが検出された場合、各NGカテゴリーごとに表示
             if ng_word_detected:
-                for ng_word, (warnings, laws) in ng_categories.items():
-                    st.write(f"NGワード: {ng_word}")
-                    st.write("警告文:", warnings)
-                    st.write("関連法令規定:", laws)
+                 # データフレームを作成
+                df_ng_words = pd.DataFrame(ng_categories.items(), columns=["NGワード", "詳細"])
+                df_ng_words[["警告文", "関連法令規定"]] = pd.DataFrame(df_ng_words["詳細"].tolist(), index=df_ng_words.index)
+                df_ng_words.drop(columns="詳細", inplace=True)
+
+                # テーブルとして表示
+                st.table(df_ng_words)
             else:
                 st.write("NGワードは検出されませんでした.")
 
-            # NGワード判定結果のセクションを追加
+            # NG画像判定結果のセクションを追加
             st.subheader("NG画像判定結果")
 
             # 画像マッチングを実行
